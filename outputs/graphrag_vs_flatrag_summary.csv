@@ -1,0 +1,6 @@
+Metric,Flat RAG,GraphRAG,Chênh lệch (Graph - Flat)
+Comprehensiveness,3.667,4.0,0.333
+Faithfulness,3.667,4.167,0.5
+Multi-hop reasoning,3.5,3.5,0.0
+Latency (s),14.273,13.088,-1.2
+Token usage,2090.167,2241.167,151.0
