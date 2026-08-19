@@ -32,15 +32,20 @@
   - Tuy nhiên, hàm `merge_guard()` sau khi chuẩn hóa và so khớp chuỗi (`SequenceMatcher` với ratio < 0.72) đã phát hiện tên riêng (first name) khác biệt hoàn toàn (`sam` vs `steve`), từ đó đưa ra quyết định `REJECT_GUARD`.
   - Nếu không có Lexical Guard, thuật toán Union-Find sẽ gộp nhầm 2 con người khác nhau thành 1 Node duy nhất, dẫn đến đồ thị bị sai lệch nghiêm trọng về chức vụ và mối quan hệ.
 
+> **Giải trình Ngoại lệ (Về việc bảng Audit bị rỗng):**
+> Do giới hạn API Rate Limit khắt khe của Groq (lỗi 429) và một số vấn đề về JSON output (lỗi 400), quá trình Extraction thực tế trên Colab chỉ thu thập được một lượng thực thể cực kỳ khiêm tốn (87 thực thể). Về mặt thống kê, với 87 thực thể ngẫu nhiên, xác suất tồn tại một cặp trùng lặp đạt độ tương đồng vector $\ge 0.90$ là gần như không có. Do đó, bảng `entity_resolution_audit_df` thực tế bị rỗng. Đây không phải là lỗi logic của thuật toán (hàm Guard và Union-Find vẫn được thiết kế chuẩn xác), mà thuần túy là hệ quả của việc thiếu hụt dữ liệu đầu vào.
+
 ---
 
 ### 3. Đồ thị & Super-node Mitigation
 > **Đặc trưng đồ thị & Cắt tỉa cạnh:** Top 3 thực thể có bậc (degree) cao nhất trong đồ thị là gì? Việc ưu tiên lấy $N$ cạnh ($N=50$) có `published_date` mới nhất tại các Super-node mang lại ưu điểm gì và có rủi ro tiềm ẩn nào?
 
 - **Top 3 Super-nodes điển hình:**
-  1. **Google / Alphabet** (`Company`) — Bậc kết nối > 150
-  2. **Microsoft** (`Company`) — Bậc kết nối > 120
-  3. **Apple** (`Company`) — Bậc kết nối > 90
+  1. **Microsoft** (`Company`) — Bậc kết nối (degree): 3
+  2. **Intelligent Technical Solutions** (`Company`) — Bậc kết nối (degree): 3
+  3. **OpenAI** / **Eric Schummer** / **DI** — Bậc kết nối (degree): 2
+  *(Lưu ý: Bậc kết nối thực tế trong bài lab thấp do giới hạn API Rate Limit của Groq khiến tập dữ liệu trích xuất bị thu hẹp đáng kể).*
+
 - **Ưu điểm của Temporal Mitigation (Cắt tỉa theo thời gian):**
   - Giảm thiểu hiện tượng bùng nổ không gian tìm kiếm (Graph Explosion) khi duyệt BFS qua các node trung tâm.
   - Giữ cho kích thước Graph Context luôn nằm trong ngưỡng an toàn (`MAX_GRAPH_CONTEXT_CHARS = 14000`), tránh làm tràn context window và tiết kiệm token cho LLM Generator.
@@ -53,9 +58,9 @@
 ### 4. Đánh đổi (Trade-offs) & Kiến trúc Scale Lớn (350MB)
 > **Phân tích kỹ thuật chuyên sâu:**
 
-- **Đánh đổi Quality vs Cost vs Latency:**
-  - **Flat RAG:** Tốc độ truy xuất nhanh (~0.5 - 1.2s), chi phí indexing thấp, nhưng thất bại ở các câu hỏi multi-hop và phân tán thông tin.
-  - **GraphRAG:** Chất lượng trả lời vượt trội ở các bài toán liên kết thực thể phức tạp; bù lại chi phí indexing cao (cần gọi LLM trích xuất NER/RE) và latency truy xuất cao hơn do cần thêm bước Seed Extraction + BFS Traversal (~2.5 - 4.5s).
+- **Đánh đổi Quality vs Cost vs Latency (Thực tế từ Benchmark):**
+  - **Flat RAG:** Tốc độ truy xuất chậm hơn đáng kể ở các câu hỏi phức tạp (Multi-hop: ~15s, Cross-doc: ~7.3s), chi phí token cao (Multi-hop: ~2500 tokens) do phải nhồi toàn bộ các chunk văn bản thô vào LLM, nhưng vẫn thất bại ở việc xâu chuỗi thông tin (Comprehensiveness: 3/5).
+  - **GraphRAG:** Chất lượng trả lời vượt trội ở các bài toán liên kết thực thể (Comprehensiveness: 5/5). Đáng chú ý, Latency thấp hơn (Multi-hop: ~8.1s) và tiêu tốn ít token hơn (~2060 tokens) do GraphRAG chỉ cung cấp mạng lưới thực thể đã được cô đọng thay vì nhồi nhét text dư thừa.
 - **Kiểm soát AI Coding Agent:**
   - Đã từ chối đề xuất tính toán ma trận tương đồng $O(N^2)$ toàn bộ thực thể bằng Python thuần vì gây tràn RAM và nghẽn CPU.
   - Thay vào đó, áp dụng cơ chế phân loại theo Label (`ALLOWED_NODE_TYPES`), sử dụng FAISS ANN tìm kiếm Top-K lân cận và gộp cụm bằng cấu trúc dữ liệu Union-Find (Disjoint-Set) tối ưu $O(N \cdot K)$.
