@@ -19,7 +19,12 @@
 
 ### 2. Quá trình Debugging & Bài học
 - **Lỗi kỹ thuật phức tạp nhất gặp phải:** Lỗi encoding khi đọc file và parse JSON output từ LLM trong Extraction step. Trong một số ít trường hợp LLM không trả về strict JSON hoặc bị timeout dẫn tới mất mát cạnh. Thêm vào đó, việc xử lý dữ liệu với file text đôi lúc gặp UnicodeDecodeError trên Windows.
-- **Cách bạn đã xử lý thành công:** Bổ sung cơ chế `max_retries` với exponential backoff trong hàm gọi LLM (`groq_chat`), và sử dụng regex linh hoạt để cắt bỏ các ký tự Markdown block (`````json`````) bao quanh output của mô hình để đảm bảo parse `json.loads` thành công.
+- **Cách bạn đã xử lý thành công:** 
+  1. Bổ sung cơ chế `max_retries` với exponential backoff trong hàm gọi LLM (`groq_chat`).
+  2. Áp dụng cơ chế kiểm tra kiểu dữ liệu (`isinstance(item, dict)`) để tránh lỗi `AttributeError` khi LLM sinh chuỗi thay vì object.
+  3. Cập nhật model từ `openai/gpt-oss-120b` (bị Rate Limit) sang `qwen/qwen3.6-27b` để tăng tốc độ phản hồi và độ ổn định.
+  4. Bổ sung cơ chế Auto-Reconnect cho Neo4j (`try-except` khởi tạo lại Driver) để đối phó với lỗi `SSLEOFError` khi query chạy ngầm quá lâu.
+  5. Xử lý triệt để lỗi xung đột DLL của PyTorch (`c10.dll` WinError 1114) trên Jupyter Windows bằng cách cấu hình lại Kernel và vá trực tiếp các cơ chế chống văng lỗi vào file `.ipynb` gốc.
 
 ---
 
