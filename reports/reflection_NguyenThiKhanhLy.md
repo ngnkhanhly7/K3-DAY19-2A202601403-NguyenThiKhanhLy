@@ -41,15 +41,15 @@
 ### 4. Phân tích Kết quả Đánh giá Thực tế (GraphRAG vs Flat RAG)
 Dựa trên kết quả chạy pipeline thực tế với tập dữ liệu HackerNoon, dưới đây là so sánh trực tiếp giữa hai phương pháp:
 
-| Metric | Flat RAG | GraphRAG | Chênh lệch (Graph - Flat) |
+| Metric | Flat RAG (Trung bình) | GraphRAG (Trung bình) | Chênh lệch (Graph - Flat) |
 |---|---|---|---|
-| Comprehensiveness (Độ bao phủ) | 3.667 | 4.000 | +0.333 |
-| Faithfulness (Độ trung thực) | 3.667 | 4.167 | +0.500 |
-| Multi-hop reasoning | 3.500 | 3.500 | 0.000 |
-| Latency (Độ trễ - giây) | 14.273 | 13.088 | -1.200 |
-| Token usage | 2090.167 | 2241.167 | +151.000 |
+| Comprehensiveness (Độ bao phủ) | 4.33 | 4.66 | +0.33 |
+| Faithfulness (Độ trung thực) | 5.00 | 5.00 | 0.00 |
+| Multi-hop reasoning | 4.33 | 4.66 | +0.33 |
+| Latency (Độ trễ - giây) | 8.24s | 8.54s | +0.30s |
+| Token usage | 2161 | 1871 | -290 tokens |
 
 **Nhận xét rút ra:**
-- **Chất lượng câu trả lời:** GraphRAG vượt trội hơn hẳn về `Comprehensiveness` và đặc biệt là `Faithfulness`. Việc cung cấp context dưới dạng đồ thị tri thức giúp LLM ít bị ảo giác (hallucination) hơn so với việc chỉ nhồi các đoạn text rời rạc từ Flat RAG.
-- **Độ trễ (Latency):** Bất ngờ là GraphRAG lại xử lý nhanh hơn (~1.2 giây) ở khâu truy xuất. Điều này có thể giải thích do GraphRAG trích xuất ra các mối quan hệ (triples) súc tích, LLM đọc hiểu nhanh hơn so với đọc một mớ văn bản dài hỗn độn từ Vector DB.
-- **Tiêu thụ Token:** GraphRAG tốn token hơn một chút (~150 tokens) do phải chèn thêm các chuỗi biểu diễn đồ thị vào prompt, nhưng hoàn toàn xứng đáng với chất lượng vượt trội.
+- **Chất lượng câu trả lời:** GraphRAG vượt trội hơn hẳn về `Comprehensiveness` (4.66 so với 4.33). Việc cung cấp context dưới dạng đồ thị tri thức giúp LLM suy luận Multi-hop tốt hơn hẳn so với việc chỉ nhồi các đoạn text rời rạc từ Flat RAG.
+- **Độ trễ (Latency):** GraphRAG chậm hơn một chút xíu (8.54s so với 8.24s). Điều này hoàn toàn hợp lý vì GraphRAG phải tốn thêm thời gian query dữ liệu từ Neo4j Database, nhưng mức chênh lệch là không đáng kể.
+- **Tiêu thụ Token:** Rất bất ngờ là GraphRAG lại **tiết kiệm token hơn hẳn** (1871 so với 2161 tokens). Lý do là vì GraphRAG trích xuất ra các mối quan hệ (triples) súc tích, LLM chỉ cần đọc đồ thị thay vì phải đọc toàn bộ một mớ văn bản dài hỗn độn từ Vector DB như Flat RAG.
